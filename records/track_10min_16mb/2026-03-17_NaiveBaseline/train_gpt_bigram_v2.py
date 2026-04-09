@@ -1,7 +1,7 @@
 """
 The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching-off points for new participants, not SOTA configs. We'll accept PRs that tune, improve, or simplify these scripts without significantly increasing complexity, but competitive submissions should stay in the `/records` folder.
 
-Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` and `train_gpt_mlx.py` never are longer than 1500 lines.
+Hard stop: `train_gpt.py` and `train_gpt_mlx.py` must never be longer than 1500 lines.
 """
 
 from __future__ import annotations
@@ -68,10 +68,7 @@ class Hyperparameters:
     use_bigram_feature = bool(int(os.environ.get("USE_BIGRAM_FEATURE", "0")))
     bigram_hash_size = int(os.environ.get("BIGRAM_HASH_SIZE", 4096))
     bigram_feature_dim = int(os.environ.get("BIGRAM_FEATURE_DIM", 32))
-    bigram_gate_init = float(os.environ.get("BIGRAM_GATE_INIT", 0.1))
-    use_mlp_3x = bool(int(os.environ.get("USE_MLP_3X", "0")))
-    mlp_mult = 3 if use_mlp_3x else int(os.environ.get("MLP_MULT", 2))
-    use_new_quant = bool(int(os.environ.get("USE_NEW_QUANT", "0")))
+    mlp_mult = int(os.environ.get("MLP_MULT", 2))
     tie_embeddings = bool(int(os.environ.get("TIE_EMBEDDINGS", "1")))
     rope_base = float(os.environ.get("ROPE_BASE", 10000.0))
     logit_softcap = float(os.environ.get("LOGIT_SOFTCAP", 30.0))
@@ -665,6 +662,9 @@ class GPT(nn.Module):
         logit_softcap: float,
         rope_base: float,
         qk_gain_init: float,
+        use_bigram_feature: bool,
+        bigram_hash_size: int,
+        bigram_feature_dim: int,
     ):
         super().__init__()
         if logit_softcap <= 0.0:
@@ -673,6 +673,12 @@ class GPT(nn.Module):
         self.tied_embed_init_std = tied_embed_init_std
         self.logit_softcap = logit_softcap
         self.tok_emb = nn.Embedding(vocab_size, model_dim)
+        self.use_bigram_feature = use_bigram_feature
+        self.bigram_hash_size = bigram_hash_size
+        if self.use_bigram_feature:
+            self.bigram_emb = nn.Embedding(bigram_hash_size, bigram_feature_dim)
+            self.bigram_norm = RMSNorm()
+            self.bigram_proj = CastedLinear(bigram_feature_dim, model_dim, bias=False)
         self.num_encoder_layers = num_layers // 2
         self.num_decoder_layers = num_layers - self.num_encoder_layers
         self.num_skip_weights = min(self.num_encoder_layers, self.num_decoder_layers)
@@ -705,6 +711,12 @@ class GPT(nn.Module):
 
     def forward(self, input_ids: Tensor, target_ids: Tensor) -> Tensor:
         x = self.tok_emb(input_ids)
+        if self.use_bigram_feature:
+            prev_ids = torch.cat([input_ids[:, :1], input_ids[:, :-1]], dim=1)
+            bigram_ids = (prev_ids * 1009 + input_ids * 9176) % self.bigram_hash_size
+            bigram_feat = self.bigram_emb(bigram_ids)
+            bigram_feat = self.bigram_norm(bigram_feat)
+            x = x + self.bigram_proj(bigram_feat)
         x = F.rms_norm(x, (x.size(-1),))
         x0 = x
         skips: list[Tensor] = []
@@ -841,22 +853,10 @@ def main() -> None:
         logit_softcap=args.logit_softcap,
         rope_base=args.rope_base,
         qk_gain_init=args.qk_gain_init,
+        use_bigram_feature=args.use_bigram_feature,
+        bigram_hash_size=args.bigram_hash_size,
+        bigram_feature_dim=args.bigram_feature_dim,
     ).to(device).bfloat16()
-    total_param_count = sum(int(p.numel()) for p in base_model.parameters())
-    mlp_param_count = sum(int(p.numel()) for name, p in base_model.named_parameters() if "mlp" in name)
-    bigram_param_count = sum(int(p.numel()) for name, p in base_model.named_parameters() if "bigram" in name)
-    log0(
-        "enabled_features:"
-        f" use_bigram_feature={args.use_bigram_feature}"
-        f" use_mlp_3x={args.use_mlp_3x}"
-        f" use_new_quant={args.use_new_quant}"
-        f" bigram_hash_size={args.bigram_hash_size}"
-        f" bigram_feature_dim={args.bigram_feature_dim}"
-        f" bigram_gate_init={args.bigram_gate_init}"
-    )
-    log0(
-        f"param_counts: total={total_param_count} mlp={mlp_param_count} bigram={bigram_param_count}"
-    )
     for module in base_model.modules():
         if isinstance(module, CastedLinear):
             module.float()

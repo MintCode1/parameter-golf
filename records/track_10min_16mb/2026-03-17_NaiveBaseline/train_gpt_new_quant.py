@@ -1,7 +1,7 @@
 """
 The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching-off points for new participants, not SOTA configs. We'll accept PRs that tune, improve, or simplify these scripts without significantly increasing complexity, but competitive submissions should stay in the `/records` folder.
 
-Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` and `train_gpt_mlx.py` never are longer than 1500 lines.
+Hard stop: `train_gpt.py` and `train_gpt_mlx.py` must never be longer than 1500 lines.
 """
 
 from __future__ import annotations
@@ -291,6 +291,8 @@ def eval_val(
 # Instead, we get approximately the same model (with a small hit) by quantizing the model to int8 & zlib compressing.
 # We can then decompress the model and run in higher precision for evaluation, after closing in under the size limit.
 
+USE_NEW_QUANT = bool(int(os.environ.get("USE_NEW_QUANT", "0")))
+
 CONTROL_TENSOR_NAME_PATTERNS = tuple(
     pattern
     for pattern in os.environ.get(
@@ -307,10 +309,10 @@ INT8_KEEP_FLOAT_FP32_NAME_PATTERNS = tuple(
     ).split(",")
     if pattern
 )
-INT8_KEEP_FLOAT_MAX_NUMEL = 65_536
+INT8_KEEP_FLOAT_MAX_NUMEL = 131_072 if USE_NEW_QUANT else 65_536
 INT8_KEEP_FLOAT_STORE_DTYPE = torch.float16
 INT8_PER_ROW_SCALE_DTYPE = torch.float16
-INT8_CLIP_PERCENTILE = 99.99984
+INT8_CLIP_PERCENTILE = 99.95 if USE_NEW_QUANT else 99.99984
 INT8_CLIP_Q = INT8_CLIP_PERCENTILE / 100.0
 
 def tensor_nbytes(t: Tensor) -> int:

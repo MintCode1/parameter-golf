@@ -1,7 +1,7 @@
 """
 The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching-off points for new participants, not SOTA configs. We'll accept PRs that tune, improve, or simplify these scripts without significantly increasing complexity, but competitive submissions should stay in the `/records` folder.
 
-Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` and `train_gpt_mlx.py` never are longer than 1500 lines.
+Hard stop: `train_gpt.py` and `train_gpt_mlx.py` must never be longer than 1500 lines.
 """
 
 from __future__ import annotations
@@ -665,6 +665,10 @@ class GPT(nn.Module):
         logit_softcap: float,
         rope_base: float,
         qk_gain_init: float,
+        use_bigram_feature: bool,
+        bigram_hash_size: int,
+        bigram_feature_dim: int,
+        bigram_gate_init: float,
     ):
         super().__init__()
         if logit_softcap <= 0.0:
@@ -673,6 +677,13 @@ class GPT(nn.Module):
         self.tied_embed_init_std = tied_embed_init_std
         self.logit_softcap = logit_softcap
         self.tok_emb = nn.Embedding(vocab_size, model_dim)
+        self.use_bigram_feature = use_bigram_feature
+        self.bigram_hash_size = bigram_hash_size
+        if self.use_bigram_feature:
+            self.bigram_emb = nn.Embedding(bigram_hash_size, bigram_feature_dim)
+            self.bigram_norm = RMSNorm()
+            self.bigram_proj = CastedLinear(bigram_feature_dim, model_dim, bias=False)
+            self.bigram_gate = nn.Parameter(torch.ones(model_dim, dtype=torch.float32) * bigram_gate_init)
         self.num_encoder_layers = num_layers // 2
         self.num_decoder_layers = num_layers - self.num_encoder_layers
         self.num_skip_weights = min(self.num_encoder_layers, self.num_decoder_layers)
@@ -705,6 +716,12 @@ class GPT(nn.Module):
 
     def forward(self, input_ids: Tensor, target_ids: Tensor) -> Tensor:
         x = self.tok_emb(input_ids)
+        if self.use_bigram_feature:
+            prev_ids = torch.cat([input_ids[:, :1], input_ids[:, :-1]], dim=1)
+            bigram_ids = (prev_ids * 1009 + input_ids * 9176) % self.bigram_hash_size
+            bigram_feat = self.bigram_emb(bigram_ids)
+            bigram_feat = self.bigram_norm(bigram_feat)
+            x = x + self.bigram_gate * self.bigram_proj(bigram_feat)
         x = F.rms_norm(x, (x.size(-1),))
         x0 = x
         skips: list[Tensor] = []
@@ -841,6 +858,10 @@ def main() -> None:
         logit_softcap=args.logit_softcap,
         rope_base=args.rope_base,
         qk_gain_init=args.qk_gain_init,
+        use_bigram_feature=args.use_bigram_feature,
+        bigram_hash_size=args.bigram_hash_size,
+        bigram_feature_dim=args.bigram_feature_dim,
+        bigram_gate_init=args.bigram_gate_init,
     ).to(device).bfloat16()
     total_param_count = sum(int(p.numel()) for p in base_model.parameters())
     mlp_param_count = sum(int(p.numel()) for name, p in base_model.named_parameters() if "mlp" in name)

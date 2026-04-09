@@ -1,0 +1,62 @@
+[
+  {
+    "run_id": "baseline",
+    "val_loss": 2.0727,
+    "val_bpb": 1.2244,
+    "final_roundtrip_bpb": 1.2244,
+    "artifact_size": 15900000,
+    "notes": "",
+    "raw_path": "logs/baseline.log",
+    "baseline_gap": 0.0,
+    "artifact_headroom": 100000,
+    "improvement_pct": 0.0
+  },
+  {
+    "run_id": "quant_only",
+    "val_loss": 2.0750,
+    "val_bpb": 1.2280,
+    "final_roundtrip_bpb": 1.2280,
+    "artifact_size": 15800000,
+    "notes": "",
+    "raw_path": "logs/quant_only.log",
+    "baseline_gap": 0.0036,
+    "artifact_headroom": 200000,
+    "improvement_pct": -0.29
+  },
+  {
+    "run_id": "bigram_4096",
+    "val_loss": 2.0680,
+    "val_bpb": 1.2180,
+    "final_roundtrip_bpb": 1.2180,
+    "artifact_size": 15950000,
+    "notes": "",
+    "raw_path": "logs/bigram_4096.log",
+    "baseline_gap": -0.0064,
+    "artifact_headroom": 50000,
+    "improvement_pct": 0.52
+  },
+  {
+    "run_id": "bigram_8192",
+    "val_loss": 2.0750,
+    "val_bpb": 1.2310,
+    "final_roundtrip_bpb": 1.2310,
+    "artifact_size": 16100000,
+    "notes": "",
+    "raw_path": "logs/bigram_8192.log",
+    "baseline_gap": 0.0066,
+    "artifact_headroom": -100000,
+    "improvement_pct": -0.54
+  },
+  {
+    "run_id": "mlp3x_only",
+    "val_loss": 2.0800,
+    "val_bpb": 1.2350,
+    "final_roundtrip_bpb": 1.2350,
+    "artifact_size": 15850000,
+    "notes": "",
+    "raw_path": "logs/mlp3x_only.log",
+    "baseline_gap": 0.0106,
+    "artifact_headroom": 150000,
+    "improvement_pct": -0.87
+  }
+]
