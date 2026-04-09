@@ -1,0 +1,8 @@
+=== STDOUT ===
+
+=== STDERR ===
+Traceback (most recent call last):
+  File "/Users/mahinnaveen/Documents/GitHub/parameter-golf/run_run_1775709515_seed42/train_gpt.py", line 23, in <module>
+    import sentencepiece as spm
+ModuleNotFoundError: No module named 'sentencepiece'
+

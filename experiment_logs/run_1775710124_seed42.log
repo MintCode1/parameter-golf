@@ -1,0 +1,10 @@
+=== STDOUT ===
+
+=== STDERR ===
+Traceback (most recent call last):
+  File "/Users/mahinnaveen/Documents/GitHub/parameter-golf/run_run_1775710124_seed42/train_gpt.py", line 1126, in <module>
+    main()
+  File "/Users/mahinnaveen/Documents/GitHub/parameter-golf/run_run_1775710124_seed42/train_gpt.py", line 753, in main
+    raise RuntimeError("CUDA is required")
+RuntimeError: CUDA is required
+

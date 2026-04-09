@@ -1,0 +1,8 @@
+=== STDOUT ===
+
+=== STDERR ===
+Traceback (most recent call last):
+  File "/Users/mahinnaveen/Documents/GitHub/parameter-golf/run_run_1775709634_seed42/train_gpt.py", line 24, in <module>
+    import torch
+ModuleNotFoundError: No module named 'torch'
+

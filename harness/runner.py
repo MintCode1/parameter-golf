@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import argparse
+import shutil
 
 
 class ExperimentRunner:
@@ -30,7 +31,8 @@ class ExperimentRunner:
         seed: int = 42,
         nproc_per_node: int = 8,
         dry_run: bool = False,
-        cleanup: bool = False
+        cleanup: bool = False,
+        use_torchrun: bool = True
     ) -> Dict[str, Any]:
         """
         Run a single experiment.
@@ -56,7 +58,6 @@ class ExperimentRunner:
         # Copy script to run directory
         script_name = script_path.name
         run_script_path = run_dir / script_name
-        import shutil
         shutil.copy2(script_path, run_script_path)
 
         # Set environment variables
@@ -65,13 +66,21 @@ class ExperimentRunner:
         env["SEED"] = str(seed)
         env["RUN_ID"] = run_id
 
-        # Prepare command - use torchrun for distributed execution
-        cmd = [
-            "torchrun",
-            "--standalone",
-            f"--nproc_per_node={nproc_per_node}",
-            str(run_script_path)
-        ]
+        # Prepare command - use torchrun for distributed execution, or python for single-process
+        # Use sys.executable to ensure we use the same Python interpreter that runs this script
+        python_exe = sys.executable
+        if use_torchrun and nproc_per_node > 1:
+            cmd = [
+                "torchrun",
+                "--standalone",
+                f"--nproc_per_node={nproc_per_node}",
+                str(run_script_path)
+            ]
+        else:
+            cmd = [
+                python_exe,
+                str(run_script_path)
+            ]
 
         print(f"Starting run {run_id} with seed {seed}")
         print(f"Run directory: {run_dir}")
@@ -180,7 +189,6 @@ class ExperimentRunner:
 
         # Cleanup if requested
         if cleanup and run_dir.exists():
-            import shutil
             shutil.rmtree(run_dir)
             print(f"Cleaned up run directory: {run_dir}")
 
@@ -266,7 +274,8 @@ class ExperimentManager:
                     seed=seed,
                     nproc_per_node=nproc_per_node,
                     dry_run=dry_run,
-                    cleanup=cleanup
+                    cleanup=cleanup,
+                    use_torchrun=(nproc_per_node > 1)
                 )
                 self.results.append(result)
 
@@ -345,7 +354,7 @@ def main():
 
     args = parser.parse_args()
 
-    workspace_root = Path.cwd()
+    workspace_root = Path.cwd().parent
     manager = ExperimentManager(workspace_root)
 
     # Reproduction mode
@@ -395,7 +404,8 @@ def main():
             seed=args.seeds[0] if args.seeds else 42,
             nproc_per_node=nproc,
             dry_run=args.dry_run,
-            cleanup=args.cleanup
+            cleanup=args.cleanup,
+            use_torchrun=(nproc > 1)
         )
         
         if not args.dry_run:
