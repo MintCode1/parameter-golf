@@ -1,0 +1,10 @@
+[
+  {
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "TRAIN_LOG_EVERY": "50",
+    "VAL_LOSS_EVERY": "200"
+  }
+]

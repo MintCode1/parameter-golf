@@ -1,0 +1,132 @@
+# QUICK START: Local Test Mode
+
+## The Command
+
+Copy and paste this (validates without running):
+```bash
+cd /Users/mahinnaveen/Documents/GitHub/parameter-golf/harness && python3 runner.py --script ../records/track_10min_16mb/2026-03-17_NaiveBaseline/train_gpt.py --reproduce --local_test --dry_run
+```
+
+Expected output:
+```
+[LOCAL TEST MODE] Using: nproc=1, MAX_WALLCLOCK_SECONDS=60
+Starting run run_XXXXXXX_seed42 with seed 42
+Run directory: /Users/mahinnaveen/Documents/GitHub/parameter-golf/harness/run_run_XXXXXXX_seed42
+DRY RUN - not executing
+```
+
+---
+
+## To Actually Run (requires data)
+
+```bash
+python3 runner.py --script ../records/track_10min_16mb/2026-03-17_NaiveBaseline/train_gpt.py --reproduce --local_test
+```
+
+---
+
+## What Gets Checked
+
+1. ✓ `DATA_PATH` exists? 
+   - If no: **Exit with error, no execution**
+   
+2. ✓ `TOKENIZER_PATH` exists? 
+   - If no: **Exit with error, no execution**
+   
+3. ✓ Script executes?
+   - If no: **Show stderr and last 50 log lines**
+   
+4. ✓ BPB score found?
+   - If no: **Mark as failed, show logs**
+   
+5. ✓ Artifact size valid?
+   - If >16MB: **Mark as failed, show size**
+
+---
+
+## Result Format
+
+### Success
+```
+============================================================
+REPRODUCTION RESULTS
+============================================================
+✓ Status: SUCCESS
+  Final BPB: 1.2244
+  Artifact Size: 1,026,048 bytes (1.0MB)
+  Runtime: 45 seconds
+  Run Directory: /path/to/run_dir
+============================================================
+```
+
+### Failure
+```
+============================================================
+REPRODUCTION RESULTS
+============================================================
+✗ Status: FAILED
+  Final BPB: N/A
+  Runtime: 60 seconds
+  Run Directory: /path/to/run_dir
+
+[DIAGNOSTICS] Last 50 lines of log:
+  ... output ...
+```
+
+---
+
+## Where Are Logs?
+
+```bash
+# View log file
+cat /Users/mahinnaveen/Documents/GitHub/parameter-golf/harness/experiment_logs/run_XXXXXXX_seed42.log
+
+# Inspect run directory
+ls -lh /Users/mahinnaveen/Documents/GitHub/parameter-golf/harness/run_run_XXXXXXX_seed42/
+
+# Find all run directories
+ls -d /Users/mahinnaveen/Documents/GitHub/parameter-golf/harness/run_run_*
+```
+
+---
+
+## Flags Explained
+
+| Flag | Meaning |
+|------|---------|
+| `--local_test` | Use 1 process, 60s timeout (not for perf) |
+| `--dry_run` | Print commands, don't execute |
+| `--cleanup` | Delete run dir after completion |
+| `--reproduce` | Run one config, print results |
+| `--nproc 8` | Use 8 processes (default 8) |
+| `--timeout 600` | 600s timeout (default 600) |
+
+---
+
+## Common Issues
+
+**"Data path does not exist"**
+→ Create `data/datasets/fineweb10B_sp1024/` or update runner.py line 365
+
+**"Tokenizer path does not exist"**
+→ Create `data/tokenizers/fineweb_1024_bpe.model` or update runner.py line 365
+
+**"timed out after 60 seconds"**
+→ Normal for local test. Use full run without `--local_test` for production.
+
+**"No valid final BPB score found"**
+→ Check logs: `cat experiment_logs/run_*.log`
+
+---
+
+## Files
+
+- `runner.py` - Main harness
+- `LOCAL_TEST.md` - Full guide
+- `VALIDATION_SUMMARY.txt` - Detailed info
+- `experiment_logs/` - Where logs go
+- `run_run_*/` - Run directories (one per execution)
+
+---
+
+**Ready to validate!** Run dry-run first, then real test. 🚀
